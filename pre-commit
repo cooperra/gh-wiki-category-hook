@@ -34,7 +34,12 @@ function generate_categories {
 }
 
 function process_category_data {
-    # resolve titles to files
+    # takes lines of page path / category title associations
+    # outputs lists of page titles grouped by their categories
+    resolve_titles_to_files | sort | uniq | group_by_category
+}
+
+function resolve_titles_to_files {
     # TODO: rewrite with `join` command
     
     # First, add a third column with some made-up paths
@@ -86,8 +91,7 @@ path_to_title[""]=0;
   }
 # output stuff
   print cat_path, cat_title, page_title;
-}}' <( gollum_path_to_title $(list_pages) ) page_list=false - | sort | uniq | group_by_category
-    
+}}' <( gollum_path_to_title $(list_pages) ) page_list=false -
 }
 
 function group_by_category {
