@@ -11,6 +11,51 @@
 # Textile: .textile
 # MediaWiki: .mediawiki, .wiki
 
+function get_extension_regex {
+    echo '\.\(markdown\|mdown\|mkdn\|mkd\|md\|asciidoc\|creole\|org\|pod\|rdoc\|rest.txt\|rst.txt\|rest\|rst\|textile\|mediawiki\|wiki\)'
+}
+
+function generate_categories {
+    list_category_data $(list_pages) | process_category_data | rewrite_category_pages
+}
+
+function list_pages {
+    find . -iregex '.*/\([^_][^/]*\)?'"$(get_extension_regex)"
+}
+
+function list_category_data {
+    for page
+    do
+	#name=$(gollum_path_to_title $page)
+	# Column one is the page path, column two is the category title
+	page_categories $page | awk '{x="'"$page"'";
+print x "\t" $0;}'
+    done
+}
+
+function page_categories {
+    # Currently returns titles of all linked pages in the Categories section of a page
+    page="$1"
+    page_category_section "$page" | scrape_gollum_links | gollum_link_to_title
+}
+
+function page_category_section() {
+    # prints all lines after the heading "Categories"
+    # until the next section is reached
+    page="$1"
+    cat "$page" | awk '
+BEGIN {reached_categories=0}
+{if (reached_categories == 1) {
+  if (match($0,"#")) {
+    reached_categories=0;
+    next;
+  }
+  print;
+  }
+}
+/# Categories/ {reached_categories=1}'
+}
+
 function scrape_gollum_links {
     # -P to be able to use non-greedy matching
     grep -o -P '\[\[.*?]]'
@@ -27,10 +72,6 @@ title=substr($0, beginning);
 # remove last two characters ("]]")
 title=substr(title,0,length(title)-2);
 print title}'
-}
-
-function generate_categories {
-    list_category_data $(list_pages) | process_category_data | rewrite_category_pages
 }
 
 function process_category_data {
@@ -92,6 +133,17 @@ path_to_title[""]=0;
 # output stuff
   print cat_path, cat_title, page_title;
 }}' <( gollum_path_to_title $(list_pages) ) page_list=false -
+}
+
+function gollum_path_to_title {
+    # outputs the path in column 1 and the title in column 2
+    for path
+    do
+	# swap hyphens with spaces and remove file extension
+	echo -n "$path"
+	echo -e -n '\t' # column separator
+	echo $(basename $path) | sed 's/-/ /g' | sed 's/'"$(get_extension_regex)"'$//g'
+    done
 }
 
 function group_by_category {
@@ -176,58 +228,6 @@ for (line_i in outbuffer) {
   print outbuffer[line_i] > cat_path;
 }}' cat_path="$cat_path" cat_title="$cat_title" - "$cat_path" | rewrite_category_pages
     fi
-}
-
-function list_category_data {
-    for page
-    do
-	#name=$(gollum_path_to_title $page)
-	# Column one is the page path, column two is the category title
-	page_categories $page | awk '{x="'"$page"'";
-print x "\t" $0;}'
-    done
-}
-
-function gollum_path_to_title {
-    # outputs the path in column 1 and the title in column 2
-    for path
-    do
-	# swap hyphens with spaces and remove file extension
-	echo -n "$path"
-	echo -e -n '\t' # column separator
-	echo $(basename $path) | sed 's/-/ /g' | sed 's/'"$(get_extension_regex)"'$//g'
-    done
-}
-
-function page_categories {
-    # Currently returns titles of all linked pages in the Categories section of a page
-    page="$1"
-    page_category_section "$page" | scrape_gollum_links | gollum_link_to_title
-}
-
-function page_category_section() {
-    # prints all lines after the heading "Categories"
-    # until the next section is reached
-    page="$1"
-    cat "$page" | awk '
-BEGIN {reached_categories=0}
-{if (reached_categories == 1) {
-  if (match($0,"#")) {
-    reached_categories=0;
-    next;
-  }
-  print;
-  }
-}
-/# Categories/ {reached_categories=1}'
-}
-
-function list_pages {
-    find . -iregex '.*/\([^_][^/]*\)?'"$(get_extension_regex)"
-}
-
-function get_extension_regex {
-    echo '\.\(markdown\|mdown\|mkdn\|mkd\|md\|asciidoc\|creole\|org\|pod\|rdoc\|rest.txt\|rst.txt\|rest\|rst\|textile\|mediawiki\|wiki\)'
 }
 
 generate_categories
