@@ -114,31 +114,6 @@ function group_by_category() {
 }
 
  function rewrite_category_pages() {
-     # is there a race condition here?
-#     tee >(prapare_pages) | edify_category_data | ed
-
-     
-#     new_group=true;
-#     while read -t 0
-#     do
-# 	if $new_group
-# 	then
-# 	    new_group=false;
-
-# 	    read -d "\t" cat_path;
-# 	    read cat_title;
-# 	    # TODO open/create file
-# 	    # TODO create template file if missing
-# 	else
-# 	    # rewrite the file
-# 	    awk 'BEGIN {}
-# {}
-# END {}' "$cat_path" -
-# 	fi
-#     done
-#}
-
-#function prepare_page_recursive {
     # takes grouped category input (pages grouped by category)
     # writes directly to category's page
     # pipes unused input into recursive child
@@ -195,32 +170,6 @@ for (line_i in outbuffer) {
     fi
 }
 
-# function prepare_pages {
-#     # consider just using awk instead
-    
-#     # first, only get the paths and names of category files
-#     awk -F "\t" 'NF==2' |
-# 	while IFS="	" read cat_path cat_title
-# 	do
-# 	    if [ -e "$cat_path" ]
-# 	    then
-# 		# check to see if there is a "pages" heading
-# 		if grep -q '# Pages' "$cat_path"
-# 		then
-# 		    true # do nothing
-# 		else
-# 		    # add a pages heading
-# 		    # for simplicity's sake, add it to the end
-# 		    echo -e "# Pages\n" >> "$cat_path"
-# 		fi
-# 	    else
-# 		# file doesn't exist yet
-# 		# for simplicity, just add a pages heading for now
-# 		echo -e "# Pages\n" >> "$cat_path"
-# 	    fi
-# 	done
-# }
-
 function list_category_data() {
     for page
     do
@@ -241,14 +190,6 @@ function gollum_path_to_title() {
 	echo $(basename $path) | sed 's/-/ /g' | sed 's/'"$(get_extension_regex)"'$//g'
     done
 }
-
-#function gollum_find_path_by_title() {
-#    title="$1"
-#    basename=$(echo $title | sed 's|[ /]|-|g')
-#    list_pages | grep ${basename}"$(get_extension_regex)" | head -n1
-#    # TODO make sure it's sorted by breadth first
-#    # TODO behave for nonexistant pages
-#}
 
 function page_categories() {
     # Currently returns titles of all linked pages in the Categories section of a page
