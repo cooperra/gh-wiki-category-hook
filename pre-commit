@@ -25,11 +25,11 @@ title=substr($0, beginning);
 title=substr(title,0,length(title)-2);
 print title}'\'
 
-function generate_categories() {
+function generate_categories {
     list_category_data $(list_pages) | process_category_data | rewrite_category_pages
 }
 
-function process_category_data() {
+function process_category_data {
     # resolve titles to files
     # TODO: rewrite with `join` command
     
@@ -86,7 +86,7 @@ path_to_title[""]=0;
     
 }
 
-function group_by_category() {
+function group_by_category {
     # accepts lines via stdin
     # input: cat_path, cat_title, page_title
     # output: [cat_path, cat_title, [\n page_title] ... ] ...
@@ -113,7 +113,7 @@ function group_by_category() {
 }}'
 }
 
- function rewrite_category_pages() {
+ function rewrite_category_pages {
     # takes grouped category input via stdin (pages grouped by category)
     # writes directly to category page's file
     # pipes unused input into recursive child
@@ -170,7 +170,7 @@ for (line_i in outbuffer) {
     fi
 }
 
-function list_category_data() {
+function list_category_data {
     for page
     do
 	#name=$(gollum_path_to_title $page)
@@ -180,7 +180,7 @@ print x "\t" $0;}'
     done
 }
 
-function gollum_path_to_title() {
+function gollum_path_to_title {
     # outputs the path in column 1 and the title in column 2
     for path
     do
@@ -191,7 +191,7 @@ function gollum_path_to_title() {
     done
 }
 
-function page_categories() {
+function page_categories {
     # Currently returns titles of all linked pages in the Categories section of a page
     page="$1"
     page_category_section "$page" | scrape_gollum_links | gollum_link_to_title
@@ -214,11 +214,11 @@ BEGIN {reached_categories=0}
 /# Categories/ {reached_categories=1}'
 }
 
-function list_pages() {
+function list_pages {
     find . -iregex '.*/\([^_][^/]*\)?'"$(get_extension_regex)"
 }
 
-function get_extension_regex() {
+function get_extension_regex {
     echo '\.\(markdown\|mdown\|mkdn\|mkd\|md\|asciidoc\|creole\|org\|pod\|rdoc\|rest.txt\|rst.txt\|rest\|rst\|textile\|mediawiki\|wiki\)'
 }
 
