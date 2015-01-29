@@ -87,7 +87,7 @@ path_to_title[""]=0;
 }
 
 function group_by_category() {
-    # accepts stuff via stdin
+    # accepts lines via stdin
     # input: cat_path, cat_title, page_title
     # output: [cat_path, cat_title, [\n page_title] ... ] ...
 
@@ -114,8 +114,8 @@ function group_by_category() {
 }
 
  function rewrite_category_pages() {
-    # takes grouped category input (pages grouped by category)
-    # writes directly to category's page
+    # takes grouped category input via stdin (pages grouped by category)
+    # writes directly to category page's file
     # pipes unused input into recursive child
     if IFS="	" read cat_path cat_title
     then
@@ -194,7 +194,6 @@ function gollum_path_to_title() {
 function page_categories() {
     # Currently returns titles of all linked pages in the Categories section of a page
     page="$1"
-    # -P to be able to use non-greedy matching
     page_category_section "$page" | scrape_gollum_links | gollum_link_to_title
 }
 
