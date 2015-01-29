@@ -1,0 +1,285 @@
+#!/bin/bash
+
+# Gollum markup formats
+# ASCIIDoc: .asciidoc
+# Creole: .creole
+# Markdown: .markdown, .mdown, .mkdn, .mkd, .md
+# Org Mode: .org
+# Pod: .pod
+# RDoc: .rdoc
+# ReStructuredText: .rest.txt, .rst.txt, .rest, .rst
+# Textile: .textile
+# MediaWiki: .mediawiki, .wiki
+
+# -P to be able to use non-greedy matching
+alias scrape_gollum_links="grep -o -P '\[\[.*?]]'"
+
+# Convert [[Text|Title]] to Title
+alias gollum_link_to_title='awk '\''{beginning=index($0,"|")+1;
+if (beginning<2) {
+# remove first two characters ("[[")
+  beginning=3;
+}
+title=substr($0, beginning);
+# remove last two characters ("]]")
+title=substr(title,0,length(title)-2);
+print title}'\'
+
+function generate_categories() {
+    list_category_data $(list_pages) | process_category_data | rewrite_category_pages
+}
+
+function process_category_data() {
+    # resolve titles to files
+    # TODO: rewrite with `join` command
+    
+    # First, add a third column with some made-up paths
+    # Then do heavy lifting to resolve titles to actual paths when possible (replacing the third column)
+    # Final output is: path of category page, title of category page, title of page
+    awk 'BEGIN { FS="\t"; OFS="\t";}
+{$3=$2;
+gsub("[ /]","-",$3);
+$3="./"$3".md";
+print;}' |
+	awk 'BEGIN {
+FS="\t";
+OFS="\t";
+page_list=true;
+lowercase_title_to_path[""]=0;
+lowercase_title_to_title[""]=0;
+path_to_title[""]=0;
+}
+{if ( page_list==true ) {
+# process mappings of paths to titles
+# populate arrays
+  path=$1 ;
+  title=$2 ;
+  lowercase_title=tolower(title) ;
+  lowercase_title_to_path[lowercase_title]=path ;
+  lowercase_title_to_title[lowercase_title]=title ;
+  path_to_title[path]=title ; 
+} else {
+# process associations of pages and categories
+  page_path=$1
+  page_title=path_to_title[page_path];
+  cat_lowercase_title=tolower($2);
+  if (cat_lowercase_title in lowercase_title_to_title) {
+    cat_title=lowercase_title_to_title[cat_lowercase_title];
+  } else {
+# category hasnt been seen yet
+    cat_title=$2;
+    lowercase_title_to_title[cat_lowercase_title]=cat_title;
+  }
+
+  if (cat_lowercase_title in lowercase_title_to_path) {
+# get path from our mapping array
+    cat_path=lowercase_title_to_path[cat_lowercase_title];
+  } else {
+# path doesnt exist--need new file
+# use the existing third column value
+    cat_path=$3;
+    lowercase_title_to_path[cat_lowercase_title]=cat_path;
+  }
+# output stuff
+  print cat_path, cat_title, page_title;
+}}' <( gollum_path_to_title $(list_pages) ) page_list=false - | sort | uniq | group_by_category
+    
+}
+
+function group_by_category() {
+    # accepts stuff via stdin
+    # input: cat_path, cat_title, page_title
+    # output: [cat_path, cat_title, [\n page_title] ... ] ...
+
+    # first, reorder fields to move page_title to the front
+    awk -F"\t" '{print $3 "\t" $1 "\t" $2}' |
+	# second, use uniq's grouping powers
+	uniq -f 2 --group |
+	    # third, awk magic
+	    awk 'BEGIN {FS="\t"; OFS="\t"; true=1; false=0; new_group=true;}
+{if (""==$0) {
+# if blank, prepare for new group
+  new_group=true;
+# print a blank line just for fun
+  print "";
+} else {
+  if (new_group) {
+# print a blank line and a heading for the group
+    print $2, $3;
+    new_group=false;
+  }
+# print the page_title on its own line
+  print $1;
+}}'
+}
+
+ function rewrite_category_pages() {
+     # is there a race condition here?
+#     tee >(prapare_pages) | edify_category_data | ed
+
+     
+#     new_group=true;
+#     while read -t 0
+#     do
+# 	if $new_group
+# 	then
+# 	    new_group=false;
+
+# 	    read -d "\t" cat_path;
+# 	    read cat_title;
+# 	    # TODO open/create file
+# 	    # TODO create template file if missing
+# 	else
+# 	    # rewrite the file
+# 	    awk 'BEGIN {}
+# {}
+# END {}' "$cat_path" -
+# 	fi
+#     done
+#}
+
+#function prepare_page_recursive {
+    # takes grouped category input (pages grouped by category)
+    # writes directly to category's page
+    # pipes unused input into recursive child
+    if IFS="	" read cat_path cat_title
+    then
+	touch "$cat_path"
+	awk 'BEGIN {i=0; j=0; done_with_stdin=0; cat_sections_printed=0; on=1; off=0; copying=on}
+
+# forward unused input to next process (stdin only)
+done_with_stdin && FILENAME!=cat_path {print}
+
+# copy the the first list of pages to a buffer for later (stdin only)
+done_with_stdin==0,NF==0 {if ( NF!=0 ) {
+  page_list[i++]=$0
+} else {
+  done_with_stdin=1;
+}}
+
+# Turn copying back on for the below program when a section is encountered
+/^#/ { copying=on; }
+
+# copy the file into a buffer for later
+# also, if we hit a section with the right name, insert the section and stop copying for a while
+# in order to omit the original contents of the section
+FILENAME==cat_path && copying==on {outbuffer[j++]=$0;
+if ( /# Page/ ) {
+  copying=off;
+  cat_sections_printed++;
+  outbuffer[j++]=""
+  outbuffer[j++]="This list is auto-generated. See [Category Hook] for more info."
+  outbuffer[j++]=""
+  for (page_i in page_list) {
+    outbuffer[j++]="- [" page_list[page_i] "]";
+  }
+  outbuffer[j++]=""
+}}
+END {
+# Do the file output
+if (cat_sections_printed==0) {
+# If a pages section was not found, make one
+  outbuffer[j++]="# Pages"
+  cat_sections_printed++;
+  outbuffer[j++]=""
+  outbuffer[j++]="This list is auto-generated. See [Category Hook] for more info."
+  outbuffer[j++]=""
+  for (page_i in page_list) {
+    outbuffer[j++]="- [" page_list[page_i] "]";
+  }
+  outbuffer[j++]=""
+}
+for (line_i in outbuffer) {
+  print outbuffer[line_i] > cat_path;
+}}' cat_path="$cat_path" cat_title="$cat_title" - "$cat_path" | rewrite_category_pages
+    fi
+}
+
+# function prepare_pages {
+#     # consider just using awk instead
+    
+#     # first, only get the paths and names of category files
+#     awk -F "\t" 'NF==2' |
+# 	while IFS="	" read cat_path cat_title
+# 	do
+# 	    if [ -e "$cat_path" ]
+# 	    then
+# 		# check to see if there is a "pages" heading
+# 		if grep -q '# Pages' "$cat_path"
+# 		then
+# 		    true # do nothing
+# 		else
+# 		    # add a pages heading
+# 		    # for simplicity's sake, add it to the end
+# 		    echo -e "# Pages\n" >> "$cat_path"
+# 		fi
+# 	    else
+# 		# file doesn't exist yet
+# 		# for simplicity, just add a pages heading for now
+# 		echo -e "# Pages\n" >> "$cat_path"
+# 	    fi
+# 	done
+# }
+
+function list_category_data() {
+    for page
+    do
+	#name=$(gollum_path_to_title $page)
+	# Column one is the page path, column two is the category title
+	page_categories $page | awk '{x="'"$page"'";
+print x "\t" $0;}'
+    done
+}
+
+function gollum_path_to_title() {
+    # outputs the path in column 1 and the title in column 2
+    for path
+    do
+	# swap hyphens with spaces and remove file extension
+	echo -n "$path"
+	echo -e -n '\t' # column separator
+	echo $(basename $path) | sed 's/-/ /g' | sed 's/'"$(get_extension_regex)"'$//g'
+    done
+}
+
+#function gollum_find_path_by_title() {
+#    title="$1"
+#    basename=$(echo $title | sed 's|[ /]|-|g')
+#    list_pages | grep ${basename}"$(get_extension_regex)" | head -n1
+#    # TODO make sure it's sorted by breadth first
+#    # TODO behave for nonexistant pages
+#}
+
+function page_categories() {
+    # Currently returns titles of all linked pages in the Categories section of a page
+    page="$1"
+    # -P to be able to use non-greedy matching
+    page_category_section "$page" | scrape_gollum_links | gollum_link_to_title
+}
+
+function page_category_section() {
+    # prints all lines after the heading "Categories"
+    # until the next section is reached
+    page="$1"
+    cat "$page" | awk '
+BEGIN {reached_categories=0}
+{if (reached_categories == 1) {
+  if (match($0,"#")) {
+    reached_categories=0;
+    next;
+  }
+  print;
+  }
+}
+/# Categories/ {reached_categories=1}'
+}
+
+function list_pages() {
+    find . -iregex '.*/\([^_][^/]*\)?'"$(get_extension_regex)"
+}
+
+function get_extension_regex() {
+    echo '\.\(markdown\|mdown\|mkdn\|mkd\|md\|asciidoc\|creole\|org\|pod\|rdoc\|rest.txt\|rst.txt\|rest\|rst\|textile\|mediawiki\|wiki\)'
+}
+
+generate_categories
