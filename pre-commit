@@ -11,11 +11,14 @@
 # Textile: .textile
 # MediaWiki: .mediawiki, .wiki
 
-# -P to be able to use non-greedy matching
-alias scrape_gollum_links="grep -o -P '\[\[.*?]]'"
+function scrape_gollum_links {
+    # -P to be able to use non-greedy matching
+    grep -o -P '\[\[.*?]]'
+}
 
-# Convert [[Text|Title]] to Title
-alias gollum_link_to_title='awk '\''{beginning=index($0,"|")+1;
+function gollum_link_to_title {
+    # Convert [[Text|Title]] to Title
+    awk '{beginning=index($0,"|")+1;
 if (beginning<2) {
 # remove first two characters ("[[")
   beginning=3;
@@ -23,7 +26,8 @@ if (beginning<2) {
 title=substr($0, beginning);
 # remove last two characters ("]]")
 title=substr(title,0,length(title)-2);
-print title}'\'
+print title}'
+}
 
 function generate_categories {
     list_category_data $(list_pages) | process_category_data | rewrite_category_pages
