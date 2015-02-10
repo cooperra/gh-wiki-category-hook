@@ -53,7 +53,7 @@ BEGIN {reached_categories=0}
   print;
   }
 }
-/# Categories/ {reached_categories=1}'
+/^#+ Categories$/ {reached_categories=1}'
 }
 
 function scrape_gollum_links {
