@@ -183,10 +183,10 @@ function group_by_category {
 	awk 'BEGIN {i=0; j=0; done_with_stdin=0; cat_sections_printed=0; on=1; off=0; copying=on}
 
 # forward unused input to next process (stdin only)
-done_with_stdin && FILENAME!=cat_path {print}
+done_with_stdin && FILENAME=="-" {print}
 
 # copy the the first list of pages to a buffer for later (stdin only)
-done_with_stdin==0,NF==0 {if ( NF!=0 ) {
+done_with_stdin==0,(NF==0 || FILENAME!="-") {if ( NF!=0 && FILENAME=="-") {
   page_list[i++]=$0
 } else {
   done_with_stdin=1;
