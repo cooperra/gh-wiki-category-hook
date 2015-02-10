@@ -46,7 +46,7 @@ function page_category_section() {
     cat "$page" | awk '
 BEGIN {reached_categories=0}
 {if (reached_categories == 1) {
-  if (match($0,"#")) {
+  if (match($0,"^#")) {
     reached_categories=0;
     next;
   }
