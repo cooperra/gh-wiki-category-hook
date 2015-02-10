@@ -199,7 +199,7 @@ done_with_stdin==0,(NF==0 || FILENAME!="-") {if ( NF!=0 && FILENAME=="-") {
 # also, if we hit a section with the right name, insert the section and stop copying for a while
 # in order to omit the original contents of the section
 FILENAME==cat_path && copying==on {outbuffer[j++]=$0;
-if ( /# Page/ ) {
+if ( /^#+ Pages$/ ) {
   copying=off;
   cat_sections_printed++;
   outbuffer[j++]=""
