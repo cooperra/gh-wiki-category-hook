@@ -230,4 +230,7 @@ for (line_i in outbuffer) {
     fi
 }
 
+git stash save --keep-index 
 generate_categories
+git add -a
+#git stash pop
